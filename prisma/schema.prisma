@@ -1,13 +1,84 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite" // ganti ke postgresql nanti
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String
+  unitId    Int?
+  unit      Unit?    @relation(fields: [unitId], references: [id])
+  requests  Request[]
+  logs      Log[]
+}
+
+model Unit {
+  id         Int          @id @default(autoincrement())
+  name       String
+  users      User[]
+  warehouses Warehouse[]
+}
+
+model Warehouse {
+  id      Int    @id @default(autoincrement())
+  name    String
+  unitId  Int
+  unit    Unit   @relation(fields: [unitId], references: [id])
+  items   Item[]
+}
+
+model Item {
+  id           Int      @id @default(autoincrement())
+  name         String
+  category     String
+  stock        Int
+  condition    String
+  warehouseId  Int
+  warehouse    Warehouse @relation(fields: [warehouseId], references: [id])
+  requests     Request[]
+  repairs      Repair[]
+}
+
+model Request {
+  id          Int    @id @default(autoincrement())
+  userId      Int
+  itemId      Int
+  quantity    Int
+  reason      String
+  status      String
+  approvedBy  Int?
+
+  user        User   @relation(fields: [userId], references: [id])
+  item        Item   @relation(fields: [itemId], references: [id])
+  returns     Return[]
+}
+
+model Return {
+  id            Int    @id @default(autoincrement())
+  requestId     Int
+  conditionAfter String
+  request       Request @relation(fields: [requestId], references: [id])
+}
+
+model Repair {
+  id          Int    @id @default(autoincrement())
+  itemId      Int
+  description String
+  status      String
+  item        Item   @relation(fields: [itemId], references: [id])
+}
+
+model Log {
+  id          Int    @id @default(autoincrement())
+  userId      Int
+  action      String
+  description String
+  user        User   @relation(fields: [userId], references: [id])
 }
