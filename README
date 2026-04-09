@@ -1,0 +1,172 @@
+# 📦 Database Setup Guide (Prisma + MySQL XAMPP)
+
+Panduan ini menjelaskan cara setup database untuk backend menggunakan **Node.js + Prisma ORM + MySQL (XAMPP)**.
+
+---
+
+## ⚙️ Prerequisites
+
+Pastikan sudah install:
+
+* Node.js (v18+ disarankan)
+* XAMPP (MySQL & phpMyAdmin)
+* NPM / Yarn
+
+---
+
+## 🚀 1. Jalankan MySQL (XAMPP)
+
+* Buka XAMPP Control Panel
+* Start **Apache** dan **MySQL**
+
+---
+
+## 🗄️ 2. Buat Database
+
+Buka phpMyAdmin:
+
+```
+http://localhost/phpmyadmin
+```
+
+Buat database baru:
+
+```sql
+CREATE DATABASE military_db;
+```
+
+---
+
+## 🔐 3. Setup Environment Variable
+
+Buat file `.env` di root project:
+
+```
+DATABASE_URL="mysql://root:@localhost:3306/military_db"
+```
+
+> ⚠️ Jika MySQL punya password:
+
+```
+DATABASE_URL="mysql://root:password@localhost:3306/military_db"
+```
+
+---
+
+## 🧠 4. Prisma Schema
+
+Pastikan file `prisma/schema.prisma` sudah berisi model database seperti:
+
+* User
+* Unit
+* Warehouse
+* Item
+* Request
+* Return
+* Repair
+* Log
+
+---
+
+## 🔧 5. Generate Prisma Client
+
+```bash
+npx prisma generate
+```
+
+---
+
+## 🏗️ 6. Migration (Create Tables)
+
+Jalankan:
+
+```bash
+npx prisma migrate dev --name init
+```
+
+Fungsi:
+
+* Membuat tabel di database
+* Menyesuaikan schema dengan database
+* Generate migration file
+
+---
+
+## 🔍 7. Cek Database
+
+Masuk ke phpMyAdmin → pilih `military_db`
+
+Pastikan tabel berikut sudah muncul:
+
+* User
+* Unit
+* Warehouse
+* Item
+* Request
+* Return
+* Repair
+* Log
+
+---
+
+## 🧪 8. Prisma Studio (Optional)
+
+Untuk melihat dan edit data langsung:
+
+```bash
+npx prisma studio
+```
+
+---
+
+## ❗ Troubleshooting
+
+### ❌ Database belum ada
+
+```
+Unknown database 'military_db'
+```
+
+✔️ Solusi:
+
+```sql
+CREATE DATABASE military_db;
+```
+
+---
+
+### ❌ Access denied
+
+✔️ Cek username/password di `.env`
+
+---
+
+### ❌ Migration error
+
+✔️ Hapus folder:
+
+```
+prisma/migrations
+```
+
+Lalu jalankan ulang migrate
+
+---
+
+## ✅ Selesai
+
+Jika semua langkah berhasil:
+
+* Prisma terhubung ke MySQL ✅
+* Tabel database sudah dibuat ✅
+* Backend siap digunakan ✅
+
+---
+
+## 🚀 Next Step
+
+* Implement Auth (Login & Register)
+* CRUD API (Item, Warehouse, Request)
+* Middleware (JWT)
+
+---

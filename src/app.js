@@ -1,12 +1,12 @@
-const express = require('express');
-const cors = require('cors');
+import express from 'express'
+import itemRoutes from './routes/itemRoutes.js'
+import requestRoutes from './routes/requestRoutes.js'
 
-const app = express();
+const app = express()
 
-app.use(cors());
-app.use(express.json());
+app.use(express.json())
 
-// route utama
-app.use('/api', require('./routes'));
+app.use('/api/items', itemRoutes)
+app.use('/api/requests', requestRoutes)
 
-module.exports = app;
+export default app
