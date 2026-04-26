@@ -12,12 +12,27 @@ async function getUnits(req, res) {
 
 async function createUnit(req, res) {
   try {
-    const { name } = req.body;
-    if (!name) {
-      return res.status(400).json({ message: 'Name dibutuhkan' });
+    const { id, name } = req.body;
+    if (!id || !name) {
+      return res.status(400).json({ message: 'ID dan name dibutuhkan' });
     }
-    const [result] = await pool.query('INSERT INTO `unit` (name) VALUES (?)', [name]);
-    return res.status(201).json({ id: result.insertId, name });
+    
+    // Validate unit code format (alphanumeric, dash, underscore, 3-50 chars)
+    if (!/^[A-Z0-9\-_]{3,50}$/.test(id)) {
+      return res.status(400).json({ message: 'Unit ID harus uppercase alphanumeric dengan dash/underscore, 3-50 chars (contoh: KODIM-001)' });
+    }
+
+    // Check if unit code already exists
+    const [existing] = await pool.query('SELECT id FROM `unit` WHERE id = ?', [id]);
+    if (existing.length) {
+      return res.status(409).json({ message: 'Unit code sudah digunakan' });
+    }
+
+    const [result] = await pool.query('INSERT INTO `unit` (id, name) VALUES (?, ?)', [id, name]);
+    return res.status(201).json({ 
+      message: 'Unit berhasil dibuat',
+      data: { id, name } 
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Gagal membuat unit' });

@@ -24,11 +24,28 @@ async function auth(req, res, next) {
   }
 }
 
-function adminOnly(req, res, next) {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Forbidden: admin only' });
+// SuperAdmin role check
+function superAdminOnly(req, res, next) {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Forbidden: superadmin only' });
   }
   next();
 }
 
-module.exports = { auth, adminOnly, JWT_SECRET };
+// Admin role check (superadmin + admin)
+function adminOnly(req, res, next) {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'superadmin')) {
+    return res.status(403).json({ message: 'Forbidden: admin access required' });
+  }
+  next();
+}
+
+// User role check (semua role bisa akses)
+function userOnly(req, res, next) {
+  if (!req.user) {
+    return res.status(403).json({ message: 'Forbidden: user access required' });
+  }
+  next();
+}
+
+module.exports = { auth, superAdminOnly, adminOnly, userOnly, JWT_SECRET };

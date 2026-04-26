@@ -15,6 +15,11 @@ services:
       - db_data:/var/lib/mysql
     networks:
       - military_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     build: .
@@ -29,7 +34,8 @@ services:
       DB_PASS: rootpassword
       DB_NAME: military_db
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - military_network
 

@@ -1,39 +1,67 @@
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
+const { logAction } = require('../middlewares/auditLog');
 
 async function getUsers(req, res) {
   try {
     const [rows] = await pool.query(
-      'SELECT u.id, u.name, u.email, u.role, u.unitId, unit.name as unitName FROM `user` u LEFT JOIN `unit` unit ON u.unitId = unit.id'
+      'SELECT u.id, u.name, u.email, u.role, u.unitId, unit.name as unitName, u.created_at FROM `user` u LEFT JOIN `unit` unit ON u.unitId = unit.id WHERE u.role IN ("admin", "user")'
     );
-    return res.json(rows);
+    return res.json({ message: 'Users retrieved successfully', data: rows });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Gagal mengambil data users' });
+    return res.status(500).json({ message: 'Failed to retrieve users' });
   }
 }
 
 async function createUser(req, res) {
   try {
-    const { name, email, password, role = 'user', unitId } = req.body;
+    const { name, email, password, role = 'admin', unitId } = req.body;
+    
+    // Validation
     if (!name || !email || !password || !unitId) {
-      return res.status(400).json({ message: 'Name, email, password dan unitId dibutuhkan' });
+      return res.status(400).json({ message: 'Name, email, password, and unitId are required' });
     }
 
+    if (!['admin', 'user'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role. Only admin or user allowed' });
+    }
+
+    // Check if email already exists
     const [existing] = await pool.query('SELECT id FROM `user` WHERE email = ?', [email]);
     if (existing.length) {
-      return res.status(409).json({ message: 'Email sudah terdaftar' });
+      return res.status(409).json({ message: 'Email already registered' });
     }
 
+    // Check if unit exists
+    const [unitCheck] = await pool.query('SELECT id FROM `unit` WHERE id = ?', [unitId]);
+    if (!unitCheck.length) {
+      return res.status(404).json({ message: 'Unit not found' });
+    }
+
+    // Hash password
     const hashed = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
       'INSERT INTO `user` (name, email, password, role, unitId) VALUES (?, ?, ?, ?, ?)',
       [name, email, hashed, role, unitId]
     );
-    return res.status(201).json({ id: result.insertId, name, email, role, unitId });
+
+    // Log action
+    await logAction(
+      req.user.id,
+      'CREATE_USER',
+      `Created user: ${name} (${email}) with role: ${role}`,
+      null,
+      { id: result.insertId, name, email, role, unitId }
+    );
+
+    return res.status(201).json({ 
+      message: 'User created successfully',
+      data: { id: result.insertId, name, email, role, unitId } 
+    });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Gagal membuat user' });
+    return res.status(500).json({ message: 'Failed to create user' });
   }
 }
 
@@ -41,13 +69,21 @@ async function updateUser(req, res) {
   try {
     const userId = req.params.id;
     const { name, email, password, role, unitId } = req.body;
-    const [rows] = await pool.query('SELECT id FROM `user` WHERE id = ?', [userId]);
+
+    // Check if user exists
+    const [rows] = await pool.query('SELECT id, role FROM `user` WHERE id = ?', [userId]);
     if (!rows.length) {
-      return res.status(404).json({ message: 'User tidak ditemukan' });
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent updating superadmin by non-superadmin
+    if (rows[0].role === 'superadmin') {
+      return res.status(403).json({ message: 'Cannot update superadmin account' });
     }
 
     const fields = [];
     const values = [];
+
     if (name) {
       fields.push('name = ?');
       values.push(name);
@@ -61,7 +97,7 @@ async function updateUser(req, res) {
       fields.push('password = ?');
       values.push(hashed);
     }
-    if (role) {
+    if (role && ['admin', 'user'].includes(role)) {
       fields.push('role = ?');
       values.push(role);
     }
@@ -71,31 +107,49 @@ async function updateUser(req, res) {
     }
 
     if (!fields.length) {
-      return res.status(400).json({ message: 'Tidak ada field yang diupdate' });
+      return res.status(400).json({ message: 'No fields to update' });
     }
 
     values.push(userId);
     await pool.query(`UPDATE \`user\` SET ${fields.join(', ')} WHERE id = ?`, values);
-    return res.json({ message: 'User berhasil diupdate' });
+    return res.json({ message: 'User updated successfully' });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Gagal update user' });
+    return res.status(500).json({ message: 'Failed to update user' });
   }
 }
 
 async function deleteUser(req, res) {
   try {
     const userId = req.params.id;
-    const [rows] = await pool.query('SELECT id FROM `user` WHERE id = ?', [userId]);
+
+    // Check if user exists
+    const [rows] = await pool.query('SELECT id, role, name, email FROM `user` WHERE id = ?', [userId]);
     if (!rows.length) {
-      return res.status(404).json({ message: 'User tidak ditemukan' });
+      return res.status(404).json({ message: 'User not found' });
     }
 
+    // Prevent deleting superadmin
+    if (rows[0].role === 'superadmin') {
+      return res.status(403).json({ message: 'Cannot delete superadmin account' });
+    }
+
+    const deletedUser = rows[0];
     await pool.query('DELETE FROM `user` WHERE id = ?', [userId]);
-    return res.json({ message: 'User berhasil dihapus' });
+
+    // Log action
+    await logAction(
+      req.user.id,
+      'DELETE_USER',
+      `Deleted user: ${deletedUser.name} (${deletedUser.email})`,
+      { id: deletedUser.id, name: deletedUser.name, email: deletedUser.email, role: deletedUser.role },
+      null
+    );
+
+    return res.json({ message: 'User deleted successfully' });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Gagal hapus user' });
+    return res.status(500).json({ message: 'Failed to delete user' });
   }
 }
 
