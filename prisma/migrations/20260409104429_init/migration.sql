@@ -105,3 +105,7 @@ ALTER TABLE `Repair` ADD CONSTRAINT `Repair_itemId_fkey` FOREIGN KEY (`itemId`) 
 
 -- AddForeignKey
 ALTER TABLE `Log` ADD CONSTRAINT `Log_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE User ADD COLUMN status VARCHAR(50) DEFAULT 'active';
+
+UPDATE User SET role = 'user';
