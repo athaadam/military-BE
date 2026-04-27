@@ -2,8 +2,8 @@ const pool = require('../db');
 
 async function getUnits(req, res) {
   try {
-    const [rows] = await pool.query('SELECT id, name FROM `unit`');
-    return res.json(rows);
+    const [rows] = await pool.query('SELECT id, name, created_at, updated_at FROM `unit` ORDER BY created_at DESC');
+    return res.json({ message: 'Units retrieved successfully', data: rows });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Gagal mengambil unit' });
@@ -12,7 +12,12 @@ async function getUnits(req, res) {
 
 async function createUnit(req, res) {
   try {
-    const { id, name } = req.body;
+    const rawId = typeof req.body?.id === 'string' ? req.body.id : '';
+    const rawName = typeof req.body?.name === 'string' ? req.body.name : '';
+
+    const id = rawId.trim().toUpperCase();
+    const name = rawName.trim();
+
     if (!id || !name) {
       return res.status(400).json({ message: 'ID dan name dibutuhkan' });
     }
@@ -28,12 +33,15 @@ async function createUnit(req, res) {
       return res.status(409).json({ message: 'Unit code sudah digunakan' });
     }
 
-    const [result] = await pool.query('INSERT INTO `unit` (id, name) VALUES (?, ?)', [id, name]);
+    await pool.query('INSERT INTO `unit` (id, name) VALUES (?, ?)', [id, name]);
     return res.status(201).json({ 
       message: 'Unit berhasil dibuat',
       data: { id, name } 
     });
   } catch (err) {
+    if (err && err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: 'Unit code sudah digunakan' });
+    }
     console.error(err);
     return res.status(500).json({ message: 'Gagal membuat unit' });
   }
