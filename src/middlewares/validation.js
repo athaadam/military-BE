@@ -115,7 +115,7 @@ const validateUserInput = (req, res, next) => {
 
 // Item input validation
 const validateItemInput = (req, res, next) => {
-  const { name, category, condition, stock } = req.body;
+  const { name, category, condition, stock, imageUrl } = req.body;
 
   if (name && !validateName(name)) {
     return res.status(400).json({ message: 'Item name must be between 2 and 191 characters' });
@@ -131,6 +131,14 @@ const validateItemInput = (req, res, next) => {
 
   if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
     return res.status(400).json({ message: 'Stock must be a non-negative integer' });
+  }
+
+  if (req.method === 'POST' && (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.trim())) {
+    return res.status(400).json({ message: 'Image wajib diisi' });
+  }
+
+  if (imageUrl !== undefined && (typeof imageUrl !== 'string' || !imageUrl.trim())) {
+    return res.status(400).json({ message: 'Image tidak valid' });
   }
 
   next();

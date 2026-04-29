@@ -1,8 +1,27 @@
 const pool = require('../db');
 
+async function getUnitInfo(req, res) {
+  try {
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ message: 'Unit ID dibutuhkan' });
+    }
+    
+    const [rows] = await pool.query('SELECT id, name, logo, created_at, updated_at FROM `unit` WHERE id = ?', [id]);
+    if (!rows.length) {
+      return res.status(404).json({ message: 'Unit tidak ditemukan' });
+    }
+    
+    return res.json({ message: 'Unit info retrieved successfully', data: rows[0] });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Gagal mengambil unit info' });
+  }
+}
+
 async function getUnits(req, res) {
   try {
-    const [rows] = await pool.query('SELECT id, name, created_at, updated_at FROM `unit` ORDER BY created_at DESC');
+    const [rows] = await pool.query('SELECT id, name, logo, created_at, updated_at FROM `unit` ORDER BY created_at DESC');
     return res.json({ message: 'Units retrieved successfully', data: rows });
   } catch (err) {
     console.error(err);
@@ -14,6 +33,7 @@ async function createUnit(req, res) {
   try {
     const rawId = typeof req.body?.id === 'string' ? req.body.id : '';
     const rawName = typeof req.body?.name === 'string' ? req.body.name : '';
+    const logo = typeof req.body?.logo === 'string' ? req.body.logo : null;
 
     const id = rawId.trim().toUpperCase();
     const name = rawName.trim();
@@ -33,10 +53,10 @@ async function createUnit(req, res) {
       return res.status(409).json({ message: 'Unit code sudah digunakan' });
     }
 
-    await pool.query('INSERT INTO `unit` (id, name) VALUES (?, ?)', [id, name]);
+    await pool.query('INSERT INTO `unit` (id, name, logo) VALUES (?, ?, ?)', [id, name, logo]);
     return res.status(201).json({ 
       message: 'Unit berhasil dibuat',
-      data: { id, name } 
+      data: { id, name, logo } 
     });
   } catch (err) {
     if (err && err.code === 'ER_DUP_ENTRY') {
@@ -50,15 +70,23 @@ async function createUnit(req, res) {
 async function updateUnit(req, res) {
   try {
     const id = req.params.id;
-    const { name } = req.body;
+    const { name, logo } = req.body;
+    
     if (!name) {
       return res.status(400).json({ message: 'Name dibutuhkan' });
     }
+    
     const [rows] = await pool.query('SELECT id FROM `unit` WHERE id = ?', [id]);
     if (!rows.length) {
       return res.status(404).json({ message: 'Unit tidak ditemukan' });
     }
-    await pool.query('UPDATE `unit` SET name = ? WHERE id = ?', [name, id]);
+    
+    if (logo) {
+      await pool.query('UPDATE `unit` SET name = ?, logo = ? WHERE id = ?', [name, logo, id]);
+    } else {
+      await pool.query('UPDATE `unit` SET name = ? WHERE id = ?', [name, id]);
+    }
+    
     return res.json({ message: 'Unit berhasil diupdate' });
   } catch (err) {
     console.error(err);
@@ -81,4 +109,4 @@ async function deleteUnit(req, res) {
   }
 }
 
-module.exports = { getUnits, createUnit, updateUnit, deleteUnit };
+module.exports = { getUnitInfo, getUnits, createUnit, updateUnit, deleteUnit };

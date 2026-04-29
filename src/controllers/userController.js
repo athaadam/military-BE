@@ -14,6 +14,25 @@ async function getUsers(req, res) {
   }
 }
 
+async function getUser(req, res) {
+  try {
+    const userId = req.params.id;
+    const [rows] = await pool.query(
+      'SELECT u.id, u.name, u.email, u.password, u.role, u.unitId, u.created_at, u.updated_at FROM `user` u WHERE u.id = ? AND u.role IN ("admin", "user")',
+      [userId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.json({ message: 'User retrieved successfully', data: rows[0] });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Failed to retrieve user' });
+  }
+}
+
 async function createUser(req, res) {
   try {
     const { name, email, password, role = 'admin', unitId } = req.body;
@@ -153,4 +172,51 @@ async function deleteUser(req, res) {
   }
 }
 
-module.exports = { getUsers, createUser, updateUser, deleteUser };
+async function resetPassword(req, res) {
+  try {
+    const userId = req.params.id;
+
+    // Check if user exists
+    const [rows] = await pool.query('SELECT id, name, email, role FROM `user` WHERE id = ?', [userId]);
+    if (!rows.length) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent resetting superadmin password
+    if (rows[0].role === 'superadmin') {
+      return res.status(403).json({ message: 'Cannot reset superadmin password' });
+    }
+
+    // Generate random password (8 chars: uppercase, lowercase, number)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let newPassword = '';
+    for (let i = 0; i < 12; i++) {
+      newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    // Hash new password
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    // Update password in database
+    await pool.query('UPDATE `user` SET password = ? WHERE id = ?', [hashed, userId]);
+
+    // Log action
+    await logAction(
+      req.user.id,
+      'RESET_PASSWORD',
+      `Reset password for user: ${rows[0].name} (${rows[0].email})`,
+      null,
+      { userId, userName: rows[0].name, userEmail: rows[0].email }
+    );
+
+    return res.json({ 
+      message: 'Password reset successfully',
+      data: { password: newPassword }
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Failed to reset password' });
+  }
+}
+
+module.exports = { getUsers, getUser, createUser, updateUser, deleteUser, resetPassword };

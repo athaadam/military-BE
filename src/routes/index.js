@@ -9,6 +9,7 @@ const requestRoutes = require('./requestRoutes');
 const returnRoutes = require('./returnRoutes');
 const auditRoutes = require('./auditRoutes');
 const { auth, superAdminOnly, adminOnly } = require('../middlewares/auth');
+const { getUnitInfo } = require('../controllers/unitController');
 
 router.get('/', (req, res) => {
   res.json({ message: 'API route jalan 🚀' });
@@ -16,6 +17,9 @@ router.get('/', (req, res) => {
 
 // Auth routes (no protection)
 router.use('/auth', authRoutes);
+
+// Public unit info route - all authenticated users can access
+router.get('/units/info/:id', auth, getUnitInfo);
 
 // SuperAdmin only routes - manage users and units
 router.use('/users', auth, superAdminOnly, userRoutes);
