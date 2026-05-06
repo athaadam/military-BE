@@ -78,7 +78,7 @@ async function ensureItemConditionMutationLogTable() {
     'CREATE TABLE IF NOT EXISTS `item_condition_mutation_log` (' +
       '`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,' +
       '`itemId` INT NOT NULL,' +
-      '`fromCondition` ENUM(\'Aktif\', \'Digunakan\', \'Rusak\', \'Perbaikan\', \'Cadangan\', \'Habis\') NOT NULL,' +
+      '`fromCondition` ENUM(\'Aktif\', \'Digunakan\', \'Rusak\', \'Perbaikan\', \'Cadangan\', \'Habis\') NULL DEFAULT NULL,' +
       '`toCondition` ENUM(\'Aktif\', \'Digunakan\', \'Rusak\', \'Perbaikan\', \'Cadangan\', \'Habis\') NOT NULL,' +
       '`quantity` INT NOT NULL,' +
       '`note` VARCHAR(255) NULL,' +
@@ -96,11 +96,28 @@ async function ensureItemConditionMutationLogTable() {
   console.log('✅ Ensured item_condition_mutation_log table');
 }
 
+async function ensureFromConditionNullable() {
+  const [rows] = await pool.query(
+    'SELECT COLUMN_NAME, IS_NULLABLE FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?',
+    [DB_NAME, 'item_condition_mutation_log', 'fromCondition']
+  );
+
+  if (rows.length && rows[0]?.IS_NULLABLE === 'NO') {
+    try {
+      await pool.query('ALTER TABLE `item_condition_mutation_log` MODIFY COLUMN `fromCondition` ENUM(\'Aktif\', \'Digunakan\', \'Rusak\', \'Perbaikan\', \'Cadangan\', \'Habis\') NULL DEFAULT NULL');
+      console.log('✅ Made item_condition_mutation_log.fromCondition nullable');
+    } catch (err) {
+      console.error('⚠️ Failed to modify fromCondition column:', err.message);
+    }
+  }
+}
+
 async function runRuntimeMigrations() {
   try {
     await ensureItemImageColumn();
     await ensureItemConditionStockTable();
     await ensureItemConditionMutationLogTable();
+    await ensureFromConditionNullable();
   } catch (err) {
     console.error('❌ Failed runtime migrations:', err.message);
   }

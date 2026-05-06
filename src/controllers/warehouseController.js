@@ -9,6 +9,9 @@ async function getWarehouses(req, res) {
     if (req.user.role === 'admin') {
       query += ' WHERE w.unitId = ?';
       params.push(req.user.unitId);
+    } else if (req.user.role === 'superadmin' && req.query.unitId) {
+      query += ' WHERE w.unitId = ?';
+      params.push(req.query.unitId);
     }
 
     const [rows] = await pool.query(query, params);

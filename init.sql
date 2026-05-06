@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS `item_condition_stock` (
 CREATE TABLE IF NOT EXISTS `item_condition_mutation_log` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `itemId` INT NOT NULL,
-  `fromCondition` ENUM('Aktif', 'Digunakan', 'Rusak', 'Perbaikan', 'Cadangan', 'Habis') NOT NULL,
+  `fromCondition` ENUM('Aktif', 'Digunakan', 'Rusak', 'Perbaikan', 'Cadangan', 'Habis') NULL DEFAULT NULL,
   `toCondition` ENUM('Aktif', 'Digunakan', 'Rusak', 'Perbaikan', 'Cadangan', 'Habis') NOT NULL,
   `quantity` INT NOT NULL,
   `note` VARCHAR(255),
